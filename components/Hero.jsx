@@ -142,16 +142,48 @@ export default function Hero(){
   },[])
 
   return (
-    <section className="relative h-[90vh] md:h-screen flex items-center">
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
-      <div className="relative z-10 max-w-5xl mx-auto px-6">
-        <h1 className="text-5xl md:text-7xl font-bold">Floyd Göttsch</h1>
-        <p className="mt-4 text-lg opacity-90">C++ & Go. Making things that work.</p>
-        <div className="mt-6 flex gap-4">
-          <a href="#projects" className="px-6 py-2 rounded-2xl font-semibold bg-gradient-to-br from-[#3C096C] via-[#7B2CBF] to-[#C77DFF]">Projects</a>
-          <a href="#contact" className="px-6 py-2 rounded-2xl font-medium border-2 border-transparent">Contact</a>
-        </div>
-      </div>
-    </section>
+      <section className="relative h-[90vh] md:h-screen flex items-center overflow-hidden">
+          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+
+          <div className="relative z-10 max-w-5xl mx-auto px-6 text-left">
+              <h1 className="
+                  text-5xl md:text-7xl font-extrabold
+                  bg-clip-text text-transparent
+                  bg-gradient-to-r from-violet-300 via-fuchsia-400 to-purple-600
+                  drop-shadow-[0_0_14px_rgba(123,44,191,0.6)]
+                  animate-fade-in
+                ">
+                  Floyd Göttsch
+              </h1>
+
+              <p className="
+                  mt-4 text-xl font-medium
+                  bg-clip-text text-transparent
+                  bg-gradient-to-r from-violet-200 via-white to-fuchsia-300
+                  bg-[length:200%_100%] animate-shimmer
+                ">
+                  C++ & Go • Making things that (mostly) work
+              </p>
+
+              <div className="mt-8 flex gap-4 animate-fade-in-delay-2">
+                  <a
+                      href="#projects"
+                      className="px-6 py-2 rounded-xl font-semibold
+        bg-gradient-to-br from-[#3C096C] via-[#7B2CBF] to-[#C77DFF]
+        transition-all duration-500 hover:shadow-[0_0_20px_rgba(199,125,255,0.6)] hover:scale-105"
+                  >
+                      Projects
+                  </a>
+
+                  <a
+                      href="#contact"
+                      className="px-6 py-2 rounded-xl font-medium border border-violet-400 text-violet-300
+        hover:bg-violet-400 hover:text-white transition-colors duration-300"
+                  >
+                      Contact
+                  </a>
+              </div>
+          </div>
+      </section>
   )
 }

@@ -30,3 +30,28 @@ body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetic
 .animate-gradient-move {
     animation: gradient-move 6s ease-in-out infinite alternate;
 }
+
+@keyframes fadeIn {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 1s ease-out forwards;
+}
+
+.animate-fade-in-delay {
+    animation: fadeIn 1.5s ease-out forwards;
+}
+
+.animate-fade-in-delay-2 {
+    animation: fadeIn 2s ease-out forwards;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+    animation: shimmer 5s linear infinite;
+}
