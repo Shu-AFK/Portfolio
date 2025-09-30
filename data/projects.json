@@ -1,0 +1,32 @@
+[
+  {
+    "name": "WawiIC",
+    "description": "WawiIC - JTL Wawi Smart AI Item Combination Tool",
+    "lang": "Go",
+    "url": "https://github.com/Shu-AFK/WawiIC"
+  },
+  {
+    "name": "WawiER",
+    "description": "JTL Wawi - Email sender when ordered qty < available stock",
+    "lang": "Go",
+    "url": "https://github.com/Shu-AFK/WawiER"
+  },
+  {
+    "name": "Datatransmission",
+    "description": "A simple remote access tool",
+    "lang": "C++",
+    "url": "https://github.com/Shu-AFK/Datatransmission"
+  },
+  {
+    "name": "fttp",
+    "description": "Configurable reverse proxy",
+    "lang": "Go",
+    "url": "https://github.com/Shu-AFK/fttp"
+  },
+  {
+    "name": "mcd",
+    "description": "OLED Motorcycle sensor display",
+    "lang": "C++",
+    "url": "https://github.com/Shu-AFK/mcd"
+  }
+]

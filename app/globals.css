@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{
+  --g1: #10002B;
+  --g2: #240046;
+  --g3: #3C096C;
+  --g4: #5A189A;
+  --g5: #7B2CBF;
+  --g6: #9D4EDD;
+  --g7: #C77DFF;
+  --g8: #E0AAFF;
+}
+
+html { scroll-behavior: smooth; }
+body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji'; }
+
+.prose :where(code):not(:where(pre code)) { padding: 0.15rem 0.35rem; border-radius: 0.35rem; background: #f1f1f3; }
+.dark .prose :where(code):not(:where(pre code)) { background: #111114; }
+.prose pre code { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular; }
+
+@keyframes gradient-move {
+    0%   { background-position: 0% 0%; }
+    100% { background-position: 100% 0%; }
+}
+
+.animate-gradient-move {
+    animation: gradient-move 6s ease-in-out infinite alternate;
+}
