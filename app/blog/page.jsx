@@ -5,9 +5,12 @@ import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 
 export const metadata = {
-    title: 'Blog — Floyd Göttsch',
+    title: 'Blog - Floyd Göttsch',
     description:
-        'Read articles, notes, and updates from Floyd Göttsch — exploring code, tools, and thoughts worth sharing.'
+        'Read articles, notes, and updates from Floyd Göttsch — exploring code, tools, and thoughts worth sharing.',
+    icons: {
+        icon: '/favicon.svg',
+    },
 }
 
 export default function BlogIndex() {

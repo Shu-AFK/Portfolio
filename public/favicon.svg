@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+    <title id="title">Floyd Göttsch — windstream icon</title>
+    <desc id="desc">Gradient ring with three flowing lines suggesting fluid motion and height-map streams.</desc>
+
+    <!-- Gradients (uses your palette) -->
+    <defs>
+        <linearGradient id="grad" x1="30" y1="30" x2="226" y2="226" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#3C096C"/>
+            <stop offset="0.45" stop-color="#7B2CBF"/>
+            <stop offset="0.8" stop-color="#C77DFF"/>
+            <stop offset="1" stop-color="#E0AAFF"/>
+        </linearGradient>
+
+        <!-- Soft glow for strokes -->
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2.2" result="blur"/>
+            <feMerge>
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        </filter>
+
+        <!-- Rounded end caps in older renderers -->
+        <style>
+            .s { stroke: url(#grad); stroke-linecap: round; fill: none; }
+        </style>
+    </defs>
+
+    <!-- Outer gradient ring -->
+    <circle cx="128" cy="128" r="96" class="s" stroke-width="14" filter="url(#glow)"/>
+
+    <!-- “Windstream” lines (height-map vibe) -->
+    <path d="M36 118 C78 92, 116 94, 164 110 S220 140, 232 130" class="s" stroke-width="8" filter="url(#glow)"/>
+    <path d="M28 146 C66 132, 110 130, 150 140 S214 170, 228 162" class="s" stroke-width="6" filter="url(#glow)"/>
+    <path d="M44 170 C84 158, 120 160, 168 176 S214 196, 224 188" class="s" stroke-width="4.5" filter="url(#glow)"/>
+</svg>

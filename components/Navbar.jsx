@@ -20,10 +20,10 @@ export default function Navbar() {
 
                 <div className="hidden md:flex items-center gap-8 text-base font-medium">
                     {[
-                        { href: '#about', label: 'About' },
-                        { href: '#projects', label: 'Projects' },
+                        { href: '/#about', label: 'About' },
+                        { href: '/#projects', label: 'Projects' },
                         { href: '/blog', label: 'Blog' },
-                        { href: '#contact', label: 'Contact' },
+                        { href: '/#contact', label: 'Contact' },
                     ].map(link => (
                         <a
                             key={link.href}

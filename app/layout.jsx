@@ -4,7 +4,10 @@ import Footer from '../components/Footer'
 
 export const metadata = {
     title: 'Floyd Göttsch',
-    description: 'C++ & Go. Making things that work.'
+    description: 'C++ & Go. Making things that work.',
+    icons: {
+        icon: '/favicon.svg',
+    },
 }
 
 export default function RootLayout({ children }) {
