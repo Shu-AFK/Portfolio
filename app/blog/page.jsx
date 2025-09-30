@@ -33,7 +33,7 @@ export default function BlogIndex() {
             <h1 className="text-4xl font-bold mb-10 relative inline-block">
         <span className="relative inline-block pr-2">
           Blog
-          <span className="absolute bottom-0 left-0 w-12 h-1 bg-gradient-to-r from-violet-600 to-fuchsia-500 rounded-full"></span>
+          <span className="absolute bottom-0 left-0 w-14 h-1 bg-gradient-to-r from-violet-600 to-fuchsia-500 rounded-full"></span>
         </span>
             </h1>
 
