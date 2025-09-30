@@ -7,18 +7,13 @@ export default function BlogPost({ params }) {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        console.log('Fetching blog post for slug:', params.slug)
         fetch(`/api/renderMarkdown/${params.slug}`)
             .then(r => r.json())
             .then(data => {
-                console.log('Received post data:', data)
-                setPost(data);
+                setPost(data)
                 setLoading(false)
             })
-            .catch((err) => {
-                console.error('Error fetching post:', err)
-                setLoading(false)
-            })
+            .catch(() => setLoading(false))
     }, [params.slug])
 
     useEffect(() => {
@@ -49,8 +44,20 @@ export default function BlogPost({ params }) {
     return (
         <main className="flex flex-col min-h-screen max-w-3xl mx-auto px-6 py-12 prose prose-zinc dark:prose-invert">
             <div className="flex-1">
-                <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
-                {post.date && <p className="text-base mb-8 opacity-60">{post.date}</p>}
+                <h1 className="text-4xl font-bold mb-2">{post.title}</h1>
+                {post.date && <p className="text-base opacity-60 mb-4">{post.date}</p>}
+                {post.tags?.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-8">
+                        {post.tags.map(tag => (
+                            <span
+                                key={tag}
+                                className="px-3 py-1 text-sm rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200"
+                            >
+                #{tag}
+              </span>
+                        ))}
+                    </div>
+                )}
                 <div dangerouslySetInnerHTML={{ __html: post.html }} />
             </div>
         </main>

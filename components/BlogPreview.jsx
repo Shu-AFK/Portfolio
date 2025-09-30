@@ -1,4 +1,5 @@
 'use client'
+
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
@@ -47,9 +48,24 @@ export default function BlogPreview() {
                         <h3 className="text-xl font-semibold text-violet-600 group-hover:text-violet-500 transition-colors">
                             {post.title}
                         </h3>
+
                         {post.date && (
                             <p className="text-sm text-zinc-500 mt-1">{post.date}</p>
                         )}
+
+                        {post.tags?.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                {post.tags.map(tag => (
+                                    <span
+                                        key={tag}
+                                        className="px-2 py-0.5 rounded-full text-xs bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200"
+                                    >
+                                    #{tag}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
                         <div className="flex items-center mt-4 text-sm text-violet-500 group-hover:text-violet-400 transition-colors">
                             <span>Read more</span>
                             <ArrowRight className="ml-1 w-4 h-4 group-hover:translate-x-1 transition-transform" />
