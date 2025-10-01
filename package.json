@@ -2,12 +2,14 @@
   "name": "floyd-site",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/fetch-pinned.js && next build",
+    "build": "node scripts/update-sitemap.js && node scripts/fetch-pinned.js && next build",
     "start": "next start",
     "export": "next export",
-    "fetch-pinned": "node scripts/fetch-pinned.js"
+    "fetch-pinned": "node scripts/fetch-pinned.js",
+    "generate-sitemap": "node scripts/update-sitemap.js"
   },
   "dependencies": {
     "@mdx-js/react": "^2.3.0",
