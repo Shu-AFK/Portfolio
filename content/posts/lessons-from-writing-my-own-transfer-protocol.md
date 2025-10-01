@@ -2,10 +2,20 @@
 title: Lessons From Writing My Own Transfer Protocol (So You Don’t Have To)
 date: 30.09.2025
 tags:
-  - networking
-  - sockets
-  - c++
-  - lessons-learned
+- networking
+- sockets
+- c++
+- lessons-learned
+description: "A deep-dive into building a custom client-server transfer protocol in C++ with raw sockets—what worked, what broke, and why I’d choose HTTP next time."
+keywords:
+- "custom transfer protocol"
+- "socket programming"
+- "C++ networking"
+- "LZ4 compression"
+- "Datatransmission project"
+- "client server communication"
+- "network protocol design"
+coverImage: "/blog-images/datatransmission-cover.jpg"
 ---
 
 
