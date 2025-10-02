@@ -7,7 +7,7 @@ import { ArrowRight } from 'lucide-react'
 export const metadata = {
     title: 'Blog - Floyd Göttsch',
     description:
-        'Read articles, notes, and updates from Floyd Göttsch — exploring code, tools, and thoughts worth sharing.',
+        'Read articles, notes, and updates, exploring code, tools, and thoughts worth sharing.',
     icons: { icon: '/favicon.svg' }
 }
 
