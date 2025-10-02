@@ -23,6 +23,7 @@ export default function Navbar() {
                         { href: '/#about', label: 'About' },
                         { href: '/#projects', label: 'Projects' },
                         { href: '/blog', label: 'Blog' },
+                        { href: '/beatmaker', label: 'Breatmaker' },
                         { href: '/#contact', label: 'Contact' },
                     ].map(link => (
                         <a
@@ -58,6 +59,7 @@ export default function Navbar() {
                             { href: '#about', label: 'About' },
                             { href: '#projects', label: 'Projects' },
                             { href: '/blog', label: 'Blog' },
+                            { href: '/beatmaker', label: 'Breatmaker' },
                             { href: '#contact', label: 'Contact' },
                         ].map(link => (
                             <a
