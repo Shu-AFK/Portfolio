@@ -7,7 +7,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 
 export const metadata = {
     title: 'Floyd Göttsch',
-    description: 'C++ & Go. Making things that work.',
+    description: 'C++ & Go. Making things that work (sometimes).',
     icons: {
         icon: '/favicon.svg',
     },
