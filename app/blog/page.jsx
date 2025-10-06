@@ -5,10 +5,17 @@ import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 
 export const metadata = {
-    title: 'Blog - Floyd Göttsch',
+    title: 'Blog',
     description:
         'Read articles, notes, and updates, exploring code, tools, and thoughts worth sharing.',
-    icons: { icon: '/favicon.svg' }
+    alternates: { canonical: '/blog' },
+    openGraph: {
+        type: 'website',
+        url: 'https://floyd-dev.com/blog',
+        title: 'Blog | Floyd Göttsch',
+        description:
+            'Read articles, notes, and updates, exploring code, tools, and thoughts worth sharing.',
+    },
 }
 
 export default function BlogIndex({ searchParams }) {

@@ -6,8 +6,24 @@ import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
 export const metadata = {
-    title: 'Floyd Göttsch',
+    metadataBase: new URL('https://floyd-dev.com'),
+    title: {
+        default: 'Floyd Göttsch',
+        template: '%s | Floyd Göttsch',
+    },
     description: 'C++ & Go. Making things that work (sometimes).',
+    openGraph: {
+        title: 'Floyd Göttsch',
+        description: 'C++ & Go. Making things that work (sometimes).',
+        url: 'https://floyd-dev.com/',
+        siteName: 'Floyd Göttsch',
+        type: 'website',
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: 'Floyd Göttsch',
+        description: 'C++ & Go. Making things that work (sometimes).',
+    },
     icons: {
         icon: '/favicon.svg',
     },
