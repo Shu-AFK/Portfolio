@@ -2,54 +2,91 @@
 
 import { useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
-import { saveAs } from 'file-saver'
-
-function audioBufferToWav(buffer) {
-    const numOfChan = buffer.numberOfChannels
-    const length = buffer.length * numOfChan * 2 + 44
-    const arrayBuffer = new ArrayBuffer(length)
-    const view = new DataView(arrayBuffer)
-    writeUTFBytes(view, 0, 'RIFF')
-    view.setUint32(4, 36 + buffer.length * numOfChan * 2, true)
-    writeUTFBytes(view, 8, 'WAVE')
-    writeUTFBytes(view, 12, 'fmt ')
-    view.setUint32(16, 16, true)
-    view.setUint16(20, 1, true)
-    view.setUint16(22, numOfChan, true)
-    view.setUint32(24, buffer.sampleRate, true)
-    view.setUint32(28, buffer.sampleRate * 2 * numOfChan, true)
-    view.setUint16(32, numOfChan * 2, true)
-    view.setUint16(34, 16, true)
-    writeUTFBytes(view, 36, 'data')
-    view.setUint32(40, buffer.length * numOfChan * 2, true)
-    let offset = 44
-    for (let i = 0; i < buffer.length; i++) {
-        for (let c = 0; c < numOfChan; c++) {
-            let sample = buffer.getChannelData(c)[i]
-            sample = Math.max(-1, Math.min(1, sample))
-            view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true)
-            offset += 2
-        }
-    }
-    return arrayBuffer
-}
-
-function writeUTFBytes(view, offset, str) {
-    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i))
-}
 
 const STEP_OPTIONS = [8, 16, 32]
-const CYCLE_OPTIONS = [1, 2, 4, 8]
 const baseName = url => url.split('/').pop()?.replace(/\.(wav|mp3|ogg)$/i, '') || url
+
+const SCALES = {
+    cMinor: {
+        label: 'C Minor',
+        notes: ['C4', 'D#4', 'F4', 'G4', 'G#4', 'A#4', 'C5']
+    },
+    aMinor: {
+        label: 'A Minor',
+        notes: ['A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4']
+    },
+    dMajor: {
+        label: 'D Major',
+        notes: ['D4', 'E4', 'F#4', 'G4', 'A4', 'B4', 'C#5', 'D5']
+    }
+}
+
+const SYNTH_PRESETS = {
+    glimmer: {
+        label: 'Glimmer Plucks',
+        synthOptions: {
+            oscillator: { type: 'triangle' },
+            envelope: { attack: 0.02, decay: 0.15, sustain: 0.15, release: 1.2 }
+        },
+        filterFrequency: 1400,
+        delay: { time: '8n', feedback: 0.25, wet: 0.35 },
+        reverb: { decay: 4.5, wet: 0.35 },
+        volume: -10
+    },
+    nebula: {
+        label: 'Nebula Keys',
+        synthOptions: {
+            oscillator: { type: 'sawtooth' },
+            envelope: { attack: 0.1, decay: 0.3, sustain: 0.4, release: 1.8 }
+        },
+        filterFrequency: 900,
+        delay: { time: '4n', feedback: 0.35, wet: 0.4 },
+        reverb: { decay: 6, wet: 0.4 },
+        volume: -12
+    },
+    noir: {
+        label: 'Noir Bells',
+        synthOptions: {
+            oscillator: { type: 'sine' },
+            envelope: { attack: 0.03, decay: 0.2, sustain: 0.2, release: 1.5 }
+        },
+        filterFrequency: 1200,
+        delay: { time: '8n', feedback: 0.18, wet: 0.3 },
+        reverb: { decay: 5.5, wet: 0.32 },
+        volume: -14
+    }
+}
+
+const getScaleNotes = key => SCALES[key]?.notes || SCALES.cMinor.notes
+
+const generateSynthPattern = (length, scaleKey) => {
+    const notes = getScaleNotes(scaleKey)
+    return Array.from({ length }, () => (Math.random() < 0.4 ? notes[Math.floor(Math.random() * notes.length)] : null))
+}
+
+const getPresetParams = key => {
+    const preset = SYNTH_PRESETS[key] || SYNTH_PRESETS.glimmer
+    return {
+        volume: preset.volume,
+        filterFrequency: preset.filterFrequency,
+        delayWet: preset.delay.wet ?? 0.3,
+        reverbWet: preset.reverb.wet ?? 0.3
+    }
+}
 
 export default function BeatMakerPro() {
     const [samples, setSamples] = useState([])
     const [stepsCount, setStepsCount] = useState(16)
     const [tempo, setTempo] = useState(128)
-    const [loopCycles, setLoopCycles] = useState(1)
     const [tracks, setTracks] = useState([])
     const [isPlaying, setIsPlaying] = useState(false)
     const [currentStep, setCurrentStep] = useState(0)
+
+    const [synthEnabled, setSynthEnabled] = useState(false)
+    const [synthPreset, setSynthPreset] = useState('glimmer')
+    const [synthScale, setSynthScale] = useState('cMinor')
+    const [synthPattern, setSynthPattern] = useState(() => generateSynthPattern(16, 'cMinor'))
+    const [synthParams, setSynthParams] = useState(() => getPresetParams('glimmer'))
 
     const tracksRef = useRef(tracks)
     useEffect(() => { tracksRef.current = tracks }, [tracks])
@@ -69,7 +106,7 @@ export default function BeatMakerPro() {
     }, [])
 
     const makeNodes = (url, params) => {
-        const player = new Tone.Player(url)
+        const player = new Tone.Player({ url })
         const hpf = new Tone.Filter(params.hpf, 'highpass')
         const lpf = new Tone.Filter(params.lpf, 'lowpass')
         const vol = new Tone.Volume(params.volume)
@@ -86,7 +123,7 @@ export default function BeatMakerPro() {
     const addTrack = url => {
         if (!url) return
         const id = crypto.randomUUID()
-        const params = { volume: 0, pan: 0, hpf: 20, lpf: 15000, reverb: 0.2, speed: 1 }
+        const params = { volume: 0, pan: 0, hpf: 20, lpf: 15000, reverb: 0.2 }
         const nodes = makeNodes(url, params)
         setTracks(t => [...t, {
             id,
@@ -130,6 +167,11 @@ export default function BeatMakerPro() {
             for (let i = 0; i < Math.min(n, tr.steps.length); i++) next[i] = tr.steps[i]
             return { ...tr, steps: next }
         }))
+        setSynthPattern(prev => {
+            const next = Array(n).fill(null)
+            for (let i = 0; i < Math.min(n, prev.length); i++) next[i] = prev[i]
+            return next
+        })
         setCurrentStep(0)
     }
 
@@ -147,22 +189,87 @@ export default function BeatMakerPro() {
 
     useEffect(() => { Tone.Transport.bpm.value = tempo }, [tempo])
 
+    const synthRef = useRef(null)
+    const synthNodesRef = useRef(null)
+    const synthPatternRef = useRef(synthPattern)
+    const synthEnabledRef = useRef(synthEnabled)
+
+    useEffect(() => { synthPatternRef.current = synthPattern }, [synthPattern])
+    useEffect(() => { synthEnabledRef.current = synthEnabled }, [synthEnabled])
+
+    const disposeSynth = () => {
+        if (synthRef.current) {
+            synthRef.current.dispose()
+            synthRef.current = null
+        }
+        if (synthNodesRef.current) {
+            Object.values(synthNodesRef.current).forEach(node => node.dispose())
+            synthNodesRef.current = null
+        }
+    }
+
+    useEffect(() => {
+        if (!synthEnabled) {
+            disposeSynth()
+            setSynthParams(getPresetParams(synthPreset))
+            return
+        }
+
+        const preset = SYNTH_PRESETS[synthPreset] || SYNTH_PRESETS.glimmer
+        const params = getPresetParams(synthPreset)
+        disposeSynth()
+        const synth = new Tone.Synth(preset.synthOptions)
+        const filter = new Tone.Filter(params.filterFrequency, 'lowpass')
+        const delay = new Tone.FeedbackDelay(preset.delay.time, preset.delay.feedback)
+        delay.wet.value = params.delayWet
+        const reverb = new Tone.Reverb({ decay: preset.reverb.decay, wet: params.reverbWet })
+        const volume = new Tone.Volume(params.volume)
+        synth.chain(filter, delay, reverb, volume, Tone.getDestination())
+        synthRef.current = synth
+        synthNodesRef.current = { filter, delay, reverb, volume }
+        setSynthParams(params)
+
+        return () => disposeSynth()
+    }, [synthEnabled, synthPreset])
+
+    useEffect(() => {
+        const nodes = synthNodesRef.current
+        if (!nodes) return
+        nodes.volume.volume.rampTo(synthParams.volume, 0.1)
+        nodes.filter.frequency.rampTo(synthParams.filterFrequency, 0.1)
+        nodes.delay.wet.rampTo(synthParams.delayWet, 0.1)
+        nodes.reverb.wet.rampTo(synthParams.reverbWet, 0.1)
+    }, [synthParams])
+
+    useEffect(() => () => {
+        disposeSynth()
+        Tone.Transport.stop()
+        Tone.Transport.cancel()
+    }, [])
+
     const repeat = time => {
-        const step = (Math.floor(Tone.Transport.ticks / Tone.Transport.PPQ * 4)) % stepsCountRef.current
+        const step = Math.floor(Tone.Transport.ticks / Tone.Transport.PPQ * 4) % stepsCountRef.current
         setCurrentStep(step)
         tracksRef.current.forEach(tr => {
             if (!tr.loaded) return
-            if (tr.params.speed === 2) {
-                if (step % 2 === 0 && tr.steps[step / 2]) tr.nodes.player.start(time)
-            } else {
-                if (tr.steps[step]) tr.nodes.player.start(time)
-            }
+            if (tr.steps[step]) tr.nodes.player.start(time)
         })
+
+        if (synthEnabledRef.current && synthRef.current) {
+            const pattern = synthPatternRef.current
+            if (pattern[step]) {
+                synthRef.current.triggerAttackRelease(pattern[step], '8n', time)
+            }
+        }
     }
 
     const togglePlay = async () => {
         if (!isPlaying) {
             await Tone.start()
+            Tone.Transport.stop()
+            Tone.Transport.cancel()
+            setCurrentStep(0)
+            Tone.Transport.position = 0
             Tone.Transport.scheduleRepeat(repeat, '16n')
             Tone.Transport.start()
         } else {
@@ -173,61 +280,53 @@ export default function BeatMakerPro() {
         setIsPlaying(p => !p)
     }
 
-    const allLoaded = tracks.length && tracks.every(t => t.loaded)
+    const regenerateSynth = () => {
+        setSynthPattern(generateSynthPattern(stepsCountRef.current, synthScale))
+    }
 
-    const exportWav = async () => {
-        const validTracks = tracksRef.current.filter(t => t.sampleUrl)
-        if (!validTracks.length) return
-
-        await Tone.loaded()
-
-        const offTracks = validTracks.map(tr => {
-            const player = new Tone.Player(tr.sampleUrl)
-            const hpf = new Tone.Filter(tr.params.hpf, 'highpass')
-            const lpf = new Tone.Filter(tr.params.lpf, 'lowpass')
-            const vol = new Tone.Volume(tr.params.volume)
-            const pan = new Tone.Panner(tr.params.pan)
-            const rev = new Tone.Reverb({ decay: 2.5, wet: tr.params.reverb })
-            player.chain(hpf, lpf, vol, pan, rev, Tone.getDestination())
-            return { ...tr, player }
-        })
-
-        await Promise.all(offTracks.map(t => t.player.load()))
-
-        const stepDur = Tone.Time('16n').toSeconds()
-        const duration = stepsCount * loopCycles * stepDur
-
-        const buffer = await Tone.Offline(() => {
-            for (let cycle = 0; cycle < loopCycles; cycle++) {
-                for (let step = 0; step < stepsCount; step++) {
-                    const tTime = (cycle * stepsCount + step) * stepDur
-                    offTracks.forEach(ot => {
-                        if (ot.params.speed === 2) {
-                            if (step % 2 === 0 && ot.steps[step / 2]) ot.player.start(tTime)
-                        } else {
-                            if (ot.steps[step]) ot.player.start(tTime)
-                        }
-                    })
+    const cycleSynthNote = idx => {
+        const notes = getScaleNotes(synthScale)
+        setSynthPattern(prev => {
+            const next = [...prev]
+            const current = next[idx]
+            if (!current) {
+                next[idx] = notes[0]
+            } else {
+                const found = notes.indexOf(current)
+                if (found === -1 || found === notes.length - 1) {
+                    next[idx] = null
+                } else {
+                    next[idx] = notes[found + 1]
                 }
             }
-        }, duration)
-
-        if (!buffer) return
-        const wav = audioBufferToWav(buffer)
-        saveAs(new Blob([wav], { type: 'audio/wav' }), `beat-loop-${loopCycles}x.wav`)
+            return next
+        })
     }
+
+    const handleScaleChange = key => {
+        setSynthScale(key)
+        setSynthPattern(generateSynthPattern(stepsCountRef.current, key))
+    }
+
+    const updateSynthParam = (key, value) => {
+        setSynthParams(prev => ({ ...prev, [key]: value }))
+    }
+
+    const anyLoading = tracks.some(t => !t.loaded)
+    const playDisabled = anyLoading
+    const playLabel = anyLoading ? 'Loading…' : isPlaying ? 'Stop' : 'Play'
 
     return (
         <div className="w-full max-w-6xl mx-auto pt-16 pb-6">
             <div className="flex flex-col items-center gap-4 mb-8">
                 <div className="flex flex-wrap justify-center gap-4 items-center">
-                    <button onClick={togglePlay} disabled={!allLoaded}
-                            className={`px-6 py-2 rounded-lg font-semibold transition ${!allLoaded
+                    <button onClick={togglePlay} disabled={playDisabled}
+                            className={`px-6 py-2 rounded-lg font-semibold transition ${playDisabled
                                 ? 'opacity-50 cursor-not-allowed'
                                 : isPlaying
                                     ? 'bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-700 hover:to-violet-700'
                                     : 'bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700'}`}>
-                        {!allLoaded ? 'Loading…' : isPlaying ? 'Stop' : 'Play'}
+                        {playLabel}
                     </button>
 
                     <label className="text-sm">Tempo</label>
@@ -241,19 +340,6 @@ export default function BeatMakerPro() {
                             className="px-3 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700">
                         {STEP_OPTIONS.map(n => <option key={n}>{n}</option>)}
                     </select>
-
-                    <label className="text-sm ml-4">Cycles</label>
-                    <select value={loopCycles} onChange={e => setLoopCycles(+e.target.value)}
-                            className="px-3 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700">
-                        {CYCLE_OPTIONS.map(n => <option key={n}>{n}×</option>)}
-                    </select>
-
-                    <button onClick={exportWav} disabled={!tracks.length}
-                            className={`px-5 py-2 rounded-lg border transition ${tracks.length
-                                ? 'border-violet-500 text-violet-500 hover:bg-violet-500 hover:text-white'
-                                : 'opacity-50 cursor-not-allowed border-zinc-400 text-zinc-400'}`}>
-                        Download WAV
-                    </button>
                 </div>
             </div>
 
@@ -269,6 +355,71 @@ export default function BeatMakerPro() {
             </div>
 
             <div className="space-y-8">
+                <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
+                        <div className="font-semibold text-emerald-500">Synth Pattern Generator</div>
+                        <button onClick={() => setSynthEnabled(v => !v)}
+                                className={`px-3 py-1 rounded-md border transition ${synthEnabled
+                                    ? 'border-emerald-500 text-emerald-500 hover:bg-emerald-500/10'
+                                    : 'border-zinc-400 text-zinc-400 hover:bg-zinc-800/30'}`}>
+                            {synthEnabled ? 'Disable Synth' : 'Enable Synth'}
+                        </button>
+                        <select value={synthPreset} onChange={e => setSynthPreset(e.target.value)}
+                                className="px-3 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700">
+                            {Object.entries(SYNTH_PRESETS).map(([key, preset]) => (
+                                <option key={key} value={key}>{preset.label}</option>
+                            ))}
+                        </select>
+                        <select value={synthScale} onChange={e => handleScaleChange(e.target.value)}
+                                className="px-3 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700">
+                            {Object.entries(SCALES).map(([key, value]) => (
+                                <option key={key} value={key}>{value.label}</option>
+                            ))}
+                        </select>
+                        <button onClick={regenerateSynth}
+                                className="px-3 py-1 rounded-md border border-emerald-500 text-emerald-500 hover:bg-emerald-500/10 transition">
+                            Generate New Pattern
+                        </button>
+                        {!synthEnabled && <span className="text-xs text-emerald-400">Enable the synth to hear the pattern.</span>}
+                    </div>
+                    <table className="w-full border-separate border-spacing-1">
+                        <tbody>
+                        <tr>{synthPattern.map((note, idx) => {
+                            const pad = stepsCount > 16 ? 'w-7 h-7' : 'w-8 h-8'
+                            const label = note ? note.replace(/\d/g, '') : '—'
+                            return (
+                                <td key={idx}>
+                                    <button onClick={() => cycleSynthNote(idx)}
+                                            className={[
+                                                pad,
+                                                'rounded-md border text-xs font-medium transition',
+                                                note ? 'bg-emerald-500/20 border-emerald-400 text-emerald-100' : 'bg-zinc-800 border-zinc-700 text-zinc-400',
+                                                currentStep === idx && isPlaying ? 'ring-2 ring-emerald-300' : '',
+                                                synthEnabled ? 'hover:bg-emerald-400/20' : 'opacity-70'
+                                            ].join(' ')}>
+                                        {label}
+                                    </button>
+                                </td>
+                            )
+                        })}</tr>
+                        </tbody>
+                    </table>
+                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <Knob label="Volume (dB)" min={-24} max={6} step={0.5}
+                              value={synthParams.volume}
+                              onChange={v => updateSynthParam('volume', v)} />
+                        <Knob label="Filter (Hz)" min={200} max={8000} step={50}
+                              value={synthParams.filterFrequency}
+                              onChange={v => updateSynthParam('filterFrequency', v)} />
+                        <Knob label="Delay Wet" min={0} max={1} step={0.01}
+                              value={synthParams.delayWet}
+                              onChange={v => updateSynthParam('delayWet', v)} />
+                        <Knob label="Reverb Wet" min={0} max={1} step={0.01}
+                              value={synthParams.reverbWet}
+                              onChange={v => updateSynthParam('reverbWet', v)} />
+                    </div>
+                </div>
+
                 {tracks.map(t => (
                     <div key={t.id} className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
                         <div className="flex flex-wrap items-center gap-3 mb-5">
@@ -311,7 +462,7 @@ export default function BeatMakerPro() {
                             </table>
                         </div>
 
-                        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+                        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                             <Knob label="Volume (dB)" min={-24} max={6} step={0.5}
                                   value={t.params.volume} onChange={v => setParam(t.id, 'volume', v)} />
                             <Knob label="Pan" min={-1} max={1} step={0.01}
@@ -322,8 +473,6 @@ export default function BeatMakerPro() {
                                   value={t.params.lpf} onChange={v => setParam(t.id, 'lpf', v)} />
                             <Knob label="Reverb Wet" min={0} max={1} step={0.01}
                                   value={t.params.reverb} onChange={v => setParam(t.id, 'reverb', v)} />
-                            <Knob label="Speed (×)" min={1} max={2} step={1}
-                                  value={t.params.speed} onChange={v => setParam(t.id, 'speed', v)} />
                         </div>
                     </div>
                 ))}
