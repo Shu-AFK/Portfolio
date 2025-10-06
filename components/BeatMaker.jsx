@@ -69,13 +69,14 @@ export default function BeatMakerPro() {
     }, [])
 
     const makeNodes = (url, params) => {
-        const player = new Tone.Player(url)
+        const player = new Tone.Player({ url })
         const hpf = new Tone.Filter(params.hpf, 'highpass')
         const lpf = new Tone.Filter(params.lpf, 'lowpass')
         const vol = new Tone.Volume(params.volume)
         const pan = new Tone.Panner(params.pan)
         const reverb = new Tone.Reverb({ decay: 2.5, wet: params.reverb })
         player.chain(hpf, lpf, vol, pan, reverb, Tone.getDestination())
+        player.playbackRate = params.speed || 1
         return { player, hpf, lpf, vol, pan, reverb }
     }
 
@@ -142,6 +143,7 @@ export default function BeatMakerPro() {
             if (key === 'hpf') tr.nodes.hpf.frequency.rampTo(val, 0.1)
             if (key === 'lpf') tr.nodes.lpf.frequency.rampTo(val, 0.1)
             if (key === 'reverb') tr.nodes.reverb.wet.rampTo(val, 0.1)
+            if (key === 'speed') tr.nodes.player.playbackRate = val
             return { ...tr, params: p }
         }))
 
@@ -210,6 +212,8 @@ export default function BeatMakerPro() {
                     })
                 }
             }
+
+            offTracks.forEach(ot => ot.player.dispose())
         }, duration)
 
         if (!buffer) return
