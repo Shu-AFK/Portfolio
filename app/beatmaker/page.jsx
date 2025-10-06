@@ -167,7 +167,9 @@ export default function BeatMakerPro() {
     const allLoaded = tracks.length && tracks.every(t => t.loaded)
 
     const exportWav = async () => {
-        if (!tracks.length) return
+        const validTracks = tracksRef.current.filter(tr => tr.sampleUrl)
+        if (!validTracks.length) return
+
         await Tone.loaded()
 
         const stepDur = Tone.Time('16n').toSeconds()
@@ -175,18 +177,17 @@ export default function BeatMakerPro() {
         const duration = totalSteps * stepDur
 
         const buffer = await Tone.Offline(async () => {
-            const offTracks = tracksRef.current.map(tr => {
-                const p = new Tone.Player({ url: tr.sampleUrl }).toDestination()
+            const offTracks = validTracks.map(tr => {
+                const player = new Tone.Player(tr.sampleUrl)
                 const hpf = new Tone.Filter(tr.params.hpf, 'highpass')
                 const lpf = new Tone.Filter(tr.params.lpf, 'lowpass')
                 const vol = new Tone.Volume(tr.params.volume)
                 const pan = new Tone.Panner(tr.params.pan)
                 const rev = new Tone.Reverb({ decay: 2.5, wet: tr.params.reverb })
-                p.chain(hpf, lpf, vol, pan, rev, Tone.getDestination())
-                return { ...tr, player: p }
+                player.chain(hpf, lpf, vol, pan, rev, Tone.getDestination())
+                return { ...tr, player }
             })
 
-            // Wait until all offline players are loaded
             await Promise.all(offTracks.map(ot => ot.player.load()))
 
             for (let cycle = 0; cycle < loopCycles; cycle++) {
@@ -202,6 +203,8 @@ export default function BeatMakerPro() {
                 }
             }
         }, duration)
+
+        if (!buffer) return
 
         const wav = audioBufferToWav(buffer)
         saveAs(new Blob([wav], { type: 'audio/wav' }), `beat-loop-${loopCycles}x.wav`)
