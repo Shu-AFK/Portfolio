@@ -95,8 +95,20 @@ export default function BeatMaker() {
     const tracksRef = useRef(tracks)
     useEffect(() => { tracksRef.current = tracks }, [tracks])
 
+    const progressRef = useRef({})
+
+    const syncProgressRef = (reset = false) => {
+        const next = {}
+        tracksRef.current.forEach(tr => {
+            const existing = progressRef.current[tr.id]
+            next[tr.id] = reset ? 0 : (typeof existing === 'number' ? existing % stepsCountRef.current : 0)
+        })
+        progressRef.current = next
+    }
+
     const stepsCountRef = useRef(stepsCount)
     useEffect(() => { stepsCountRef.current = stepsCount }, [stepsCount])
+    useEffect(() => { syncProgressRef() }, [tracks, stepsCount])
 
     useEffect(() => {
         fetch('/api/samples')
@@ -117,6 +129,7 @@ export default function BeatMaker() {
         const pan = new Tone.Panner(params.pan)
         const reverb = new Tone.Reverb({ decay: 2.5, wet: params.reverb })
         player.chain(hpf, lpf, vol, pan, reverb, Tone.getDestination())
+        player.playbackRate = params.speed || 1
         return { player, hpf, lpf, vol, pan, reverb }
     }
 
@@ -188,6 +201,7 @@ export default function BeatMaker() {
             if (key === 'hpf') tr.nodes.hpf.frequency.rampTo(val, 0.1)
             if (key === 'lpf') tr.nodes.lpf.frequency.rampTo(val, 0.1)
             if (key === 'reverb') tr.nodes.reverb.wet.rampTo(val, 0.1)
+            if (key === 'speed') tr.nodes.player.playbackRate = val
             return { ...tr, params: p }
         }))
 
@@ -257,6 +271,7 @@ export default function BeatMaker() {
     const repeat = time => {
         const step = Math.floor(Tone.Transport.ticks / Tone.Transport.PPQ * 4) % stepsCountRef.current
         setCurrentStep(step)
+        const stepDur = Tone.Time('16n').toSeconds()
         tracksRef.current.forEach(tr => {
             if (!tr.loaded) return
             if (tr.steps[step]) tr.nodes.player.start(time)
