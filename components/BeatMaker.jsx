@@ -181,23 +181,23 @@ export default function BeatMakerPro() {
 
         await Tone.loaded()
 
-        const offTracks = validTracks.map(tr => {
-            const player = new Tone.Player(tr.sampleUrl)
-            const hpf = new Tone.Filter(tr.params.hpf, 'highpass')
-            const lpf = new Tone.Filter(tr.params.lpf, 'lowpass')
-            const vol = new Tone.Volume(tr.params.volume)
-            const pan = new Tone.Panner(tr.params.pan)
-            const rev = new Tone.Reverb({ decay: 2.5, wet: tr.params.reverb })
-            player.chain(hpf, lpf, vol, pan, rev, Tone.getDestination())
-            return { ...tr, player }
-        })
-
-        await Promise.all(offTracks.map(t => t.player.load()))
-
         const stepDur = Tone.Time('16n').toSeconds()
         const duration = stepsCount * loopCycles * stepDur
 
-        const buffer = await Tone.Offline(() => {
+        const buffer = await Tone.Offline(async () => {
+            const offTracks = validTracks.map(tr => {
+                const player = new Tone.Player(tr.sampleUrl)
+                const hpf = new Tone.Filter(tr.params.hpf, 'highpass')
+                const lpf = new Tone.Filter(tr.params.lpf, 'lowpass')
+                const vol = new Tone.Volume(tr.params.volume)
+                const pan = new Tone.Panner(tr.params.pan)
+                const rev = new Tone.Reverb({ decay: 2.5, wet: tr.params.reverb })
+                player.chain(hpf, lpf, vol, pan, rev, Tone.getDestination())
+                return { ...tr, player }
+            })
+
+            await Promise.all(offTracks.map(t => t.player.load()))
+
             for (let cycle = 0; cycle < loopCycles; cycle++) {
                 for (let step = 0; step < stepsCount; step++) {
                     const tTime = (cycle * stepsCount + step) * stepDur
