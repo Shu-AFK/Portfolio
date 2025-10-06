@@ -3,8 +3,9 @@ import path from 'path';
 import matter from 'gray-matter';
 
 const DOMAIN = 'https://floyd-dev.com';
-const POSTS_DIR = path.join(process.cwd(), 'content', 'posts');
-const SITEMAP_PATH = path.join(process.cwd(), 'public', 'sitemap.xml');
+const ROOT = process.cwd();
+const POSTS_DIR = path.join(ROOT, 'content', 'posts');
+const SITEMAP_PATH = path.join(ROOT, 'public', 'sitemap.xml');
 
 // Format date as YYYY-MM-DD or fallback to today's date
 function formatDate(date) {
@@ -14,44 +15,69 @@ function formatDate(date) {
     return date.toISOString().split('T')[0];
 }
 
-function generateSitemap() {
-    if (!fs.existsSync(POSTS_DIR)) {
-        console.error(`Posts directory not found: ${POSTS_DIR}`);
-        process.exit(1);
+function normalizeDate(value) {
+    const date = value instanceof Date ? value : new Date(value);
+    const now = new Date();
+
+    if (isNaN(date.getTime()) || date > now) {
+        return now;
     }
 
-    const files = fs.readdirSync(POSTS_DIR).filter(f => f.endsWith('.md'));
+    return date;
+}
 
-    const urls = [
-        { loc: `${DOMAIN}/`, lastmod: new Date() },
-        { loc: `${DOMAIN}/blog`, lastmod: new Date() }
+function generateSitemap() {
+    const urls = [];
+
+    const staticPages = [
+        { loc: `${DOMAIN}/`, file: path.join(ROOT, 'app', 'page.jsx') },
+        { loc: `${DOMAIN}/blog`, file: path.join(ROOT, 'app', 'blog', 'page.jsx') },
+        { loc: `${DOMAIN}/beatmaker`, file: path.join(ROOT, 'app', 'beatmaker', 'page.jsx') }
     ];
 
-    for (const file of files) {
-        const slug = file.replace(/\.md$/, '');
-        const raw = fs.readFileSync(path.join(POSTS_DIR, file), 'utf8');
-        const { data } = matter(raw);
-
-        let lastmod;
-
-        // Try to parse the front-matter date
-        if (data.date) {
-            // Convert DD.MM.YYYY or DD.MM.YY to YYYY-MM-DD
-            if (/^\d{2}\.\d{2}\.\d{4}$/.test(data.date)) {
-                const [day, month, year] = data.date.split('.');
-                lastmod = new Date(`${year}-${month}-${day}`);
-            } else if (/^\d{2}\.\d{2}\.\d{2}$/.test(data.date)) {
-                const [day, month, year] = data.date.split('.');
-                lastmod = new Date(`20${year}-${month}-${day}`);
-            } else {
-                lastmod = new Date(data.date);
-            }
+    for (const { loc, file } of staticPages) {
+        if (fs.existsSync(file)) {
+            const stats = fs.statSync(file);
+            urls.push({ loc, lastmod: normalizeDate(stats.mtime) });
         }
+    }
 
-        urls.push({
-            loc: `${DOMAIN}/blog/${slug}`,
-            lastmod: lastmod || new Date()
-        });
+    if (!fs.existsSync(POSTS_DIR)) {
+        console.warn(`Posts directory not found: ${POSTS_DIR}`);
+    } else {
+        const files = fs.readdirSync(POSTS_DIR).filter(f => f.endsWith('.md'));
+
+        for (const file of files) {
+            const slug = file.replace(/\.md$/, '');
+            const filePath = path.join(POSTS_DIR, file);
+            const stats = fs.statSync(filePath);
+            const raw = fs.readFileSync(filePath, 'utf8');
+            const { data } = matter(raw);
+
+            let lastmod = normalizeDate(stats.mtime);
+
+            if (data.updated) {
+                lastmod = normalizeDate(new Date(data.updated));
+            } else if (data.date) {
+                if (/^\d{2}\.\d{2}\.\d{4}$/.test(data.date)) {
+                    const [day, month, year] = data.date.split('.');
+                    lastmod = normalizeDate(new Date(`${year}-${month}-${day}`));
+                } else if (/^\d{2}\.\d{2}\.\d{2}$/.test(data.date)) {
+                    const [day, month, year] = data.date.split('.');
+                    lastmod = normalizeDate(new Date(`20${year}-${month}-${day}`));
+                } else {
+                    const parsed = new Date(data.date);
+                    if (!isNaN(parsed.getTime())) {
+                        lastmod = normalizeDate(parsed);
+                    }
+                }
+            }
+
+            urls.push({
+                loc: `${DOMAIN}/blog/${slug}`,
+                lastmod
+            });
+        }
     }
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>

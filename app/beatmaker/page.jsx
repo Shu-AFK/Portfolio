@@ -4,7 +4,14 @@ const BeatMaker = dynamic(() => import('../../components/BeatMaker'), { ssr: fal
 
 export const metadata = {
     title: 'Beatmaker',
-    description: 'Layer drum samples and experiment with the built-in synth pattern generator.'
+    description: 'Layer drum samples and experiment with the built-in synth pattern generator.',
+    alternates: { canonical: '/beatmaker' },
+    openGraph: {
+        type: 'website',
+        url: 'https://floyd-dev.com/beatmaker',
+        title: 'Beatmaker | Floyd Göttsch',
+        description: 'Layer drum samples and experiment with the built-in synth pattern generator.',
+    },
 }
 
 export default function BeatMakerPage() {

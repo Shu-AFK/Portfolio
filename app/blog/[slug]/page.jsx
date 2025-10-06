@@ -53,6 +53,8 @@ export async function generateMetadata({ params }) {
     const post = await getPost(params.slug)
     if (!post) return {}
 
+    const canonicalPath = `/blog/${params.slug}`
+
     return {
         title: post.title,
         description: post.description,
@@ -60,6 +62,7 @@ export async function generateMetadata({ params }) {
         openGraph: {
             title: post.title,
             description: post.description,
+            url: `https://floyd-dev.com${canonicalPath}`,
             images: post.coverImage ? [post.coverImage] : [],
             type: 'article',
         },
@@ -68,6 +71,9 @@ export async function generateMetadata({ params }) {
             title: post.title,
             description: post.description,
             images: post.coverImage ? [post.coverImage] : [],
+        },
+        alternates: {
+            canonical: canonicalPath,
         },
     }
 }
