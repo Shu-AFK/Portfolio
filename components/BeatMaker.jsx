@@ -18,6 +18,14 @@ const SCALES = {
     dMajor: {
         label: 'D Major',
         notes: ['D4', 'E4', 'F#4', 'G4', 'A4', 'B4', 'C#5', 'D5']
+    },
+    fMinor: {
+        label: 'F Minor',
+        notes: ['F3', 'G3', 'G#3', 'A#3', 'C4', 'C#4', 'D#4', 'F4']
+    },
+    gMajor: {
+        label: 'G Major',
+        notes: ['G3', 'A3', 'B3', 'C4', 'D4', 'E4', 'F#4', 'G4']
     }
 }
 
@@ -54,14 +62,30 @@ const SYNTH_PRESETS = {
         delay: { time: '8n', feedback: 0.18, wet: 0.3 },
         reverb: { decay: 5.5, wet: 0.32 },
         volume: -14
+    },
+    aurora: {
+        label: 'Aurora Pads',
+        synthOptions: {
+            oscillator: { type: 'sawtooth' },
+            envelope: { attack: 0.4, decay: 0.6, sustain: 0.8, release: 2.5 }
+        },
+        filterFrequency: 600,
+        delay: { time: '2n', feedback: 0.45, wet: 0.45 },
+        reverb: { decay: 8, wet: 0.45 },
+        volume: -16
     }
 }
 
 const getScaleNotes = key => SCALES[key]?.notes || SCALES.cMinor.notes
 
-const generateSynthPattern = (length, scaleKey) => {
+const LIVE_SYNTH_NOTES = ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5']
+
+const generateSynthPattern = (length, scaleKey, density = 0.4) => {
     const notes = getScaleNotes(scaleKey)
-    const pattern = Array.from({ length }, () => (Math.random() < 0.4 ? notes[Math.floor(Math.random() * notes.length)] : null))
+    const pattern = Array.from(
+        { length },
+        () => (Math.random() < density ? notes[Math.floor(Math.random() * notes.length)] : null)
+    )
     if (!pattern.some(Boolean) && notes.length) {
         pattern[0] = notes[0]
     }
@@ -89,8 +113,31 @@ export default function BeatMaker() {
     const [synthEnabled, setSynthEnabled] = useState(false)
     const [synthPreset, setSynthPreset] = useState('glimmer')
     const [synthScale, setSynthScale] = useState('cMinor')
-    const [synthPattern, setSynthPattern] = useState(() => generateSynthPattern(16, 'cMinor'))
+    const [synthDensity, setSynthDensity] = useState(0.4)
+    const [synthPattern, setSynthPattern] = useState(() => generateSynthPattern(16, 'cMinor', 0.4))
     const [synthParams, setSynthParams] = useState(() => getPresetParams('glimmer'))
+
+    const [liveSynthEnabled, setLiveSynthEnabled] = useState(false)
+    const [liveSynthWaveform, setLiveSynthWaveform] = useState('sawtooth')
+    const [liveSynthVolume, setLiveSynthVolume] = useState(-12)
+    const [liveSynthHeldNotes, setLiveSynthHeldNotes] = useState([])
+    const [liveSynthEnvelope, setLiveSynthEnvelope] = useState({
+        attack: 0.05,
+        decay: 0.25,
+        sustain: 0.6,
+        release: 1.6
+    })
+    const [liveSynthFilter, setLiveSynthFilter] = useState({
+        frequency: 1200,
+        resonance: 1.2
+    })
+    const [liveSynthFx, setLiveSynthFx] = useState({
+        chorusWet: 0.25,
+        pingPongWet: 0.25,
+        pingPongTime: 0.3,
+        pingPongFeedback: 0.35,
+        reverbWet: 0.35
+    })
 
     const tracksRef = useRef(tracks)
     useEffect(() => { tracksRef.current = tracks }, [tracks])
@@ -123,14 +170,18 @@ export default function BeatMaker() {
 
     const makeNodes = (url, params) => {
         const player = new Tone.Player({ url })
-        const hpf = new Tone.Filter(params.hpf, 'highpass')
-        const lpf = new Tone.Filter(params.lpf, 'lowpass')
-        const vol = new Tone.Volume(params.volume)
-        const pan = new Tone.Panner(params.pan)
-        const reverb = new Tone.Reverb({ decay: 2.5, wet: params.reverb })
-        player.chain(hpf, lpf, vol, pan, reverb, Tone.getDestination())
+        const hpf = new Tone.Filter(params.hpf ?? 20, 'highpass')
+        const lpf = new Tone.Filter(params.lpf ?? 15000, 'lowpass')
+        const distortion = new Tone.Distortion(params.distortion ?? 0)
+        const bitcrusher = new Tone.BitCrusher(params.bitDepth ?? 8)
+        const delay = new Tone.FeedbackDelay(params.delayTime ?? 0.25, params.delayFeedback ?? 0.15)
+        delay.wet.value = params.delayWet ?? 0
+        const vol = new Tone.Volume(params.volume ?? 0)
+        const pan = new Tone.Panner(params.pan ?? 0)
+        const reverb = new Tone.Reverb({ decay: 2.5, wet: params.reverb ?? 0.2 })
+        player.chain(hpf, lpf, distortion, bitcrusher, delay, vol, pan, reverb, Tone.getDestination())
         player.playbackRate = params.speed || 1
-        return { player, hpf, lpf, vol, pan, reverb }
+        return { player, hpf, lpf, distortion, bitcrusher, delay, vol, pan, reverb }
     }
 
     const markLoaded = () => Tone.loaded().then(() =>
@@ -140,7 +191,19 @@ export default function BeatMaker() {
     const addTrack = url => {
         if (!url) return
         const id = crypto.randomUUID()
-        const params = { volume: 0, pan: 0, hpf: 20, lpf: 15000, reverb: 0.2 }
+        const params = {
+            volume: 0,
+            pan: 0,
+            hpf: 20,
+            lpf: 15000,
+            reverb: 0.2,
+            distortion: 0,
+            bitDepth: 8,
+            delayWet: 0,
+            delayTime: 0.25,
+            delayFeedback: 0.15,
+            speed: 1
+        }
         const nodes = makeNodes(url, params)
         setTracks(t => [...t, {
             id,
@@ -202,18 +265,39 @@ export default function BeatMaker() {
             if (key === 'lpf') tr.nodes.lpf.frequency.rampTo(val, 0.1)
             if (key === 'reverb') tr.nodes.reverb.wet.rampTo(val, 0.1)
             if (key === 'speed') tr.nodes.player.playbackRate = val
+            if (key === 'distortion') tr.nodes.distortion.distortion = val
+            if (key === 'bitDepth') {
+                const rounded = Math.round(val)
+                tr.nodes.bitcrusher.bits = rounded
+                p.bitDepth = rounded
+                return { ...tr, params: p }
+            }
+            if (key === 'delayWet') tr.nodes.delay.wet.rampTo(val, 0.1)
+            if (key === 'delayTime') tr.nodes.delay.delayTime.rampTo(val, 0.1)
+            if (key === 'delayFeedback') tr.nodes.delay.feedback.rampTo(val, 0.1)
             return { ...tr, params: p }
         }))
 
     useEffect(() => { Tone.Transport.bpm.value = tempo }, [tempo])
+    const [swing, setSwing] = useState(0)
+    useEffect(() => {
+        Tone.Transport.swing = swing
+        Tone.Transport.swingSubdivision = '8n'
+    }, [swing])
 
     const synthRef = useRef(null)
     const synthNodesRef = useRef(null)
     const synthPatternRef = useRef(synthPattern)
     const synthEnabledRef = useRef(synthEnabled)
+    const synthDensityRef = useRef(synthDensity)
+
+    const liveSynthRef = useRef(null)
+    const liveSynthNodesRef = useRef(null)
+    const liveSynthActiveNotesRef = useRef(new Set())
 
     useEffect(() => { synthPatternRef.current = synthPattern }, [synthPattern])
     useEffect(() => { synthEnabledRef.current = synthEnabled }, [synthEnabled])
+    useEffect(() => { synthDensityRef.current = synthDensity }, [synthDensity])
 
     const disposeSynth = () => {
         if (synthRef.current) {
@@ -225,6 +309,55 @@ export default function BeatMaker() {
             synthNodesRef.current = null
         }
     }
+
+    const disposeLiveSynth = () => {
+        if (liveSynthRef.current) {
+            try {
+                liveSynthRef.current.releaseAll()
+            } catch (e) {
+                // ignore release errors when synth already disposed
+            }
+            liveSynthRef.current.dispose()
+            liveSynthRef.current = null
+        }
+        if (liveSynthNodesRef.current) {
+            Object.values(liveSynthNodesRef.current).forEach(node => node.dispose())
+            liveSynthNodesRef.current = null
+        }
+        liveSynthActiveNotesRef.current.clear()
+        setLiveSynthHeldNotes([])
+    }
+
+    useEffect(() => {
+        if (!liveSynthEnabled) {
+            disposeLiveSynth()
+            return
+        }
+
+        if (liveSynthRef.current) return
+
+        const synth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: liveSynthWaveform },
+            envelope: liveSynthEnvelope
+        })
+        const filter = new Tone.Filter(liveSynthFilter.frequency, 'lowpass')
+        filter.Q.value = liveSynthFilter.resonance
+        const chorus = new Tone.Chorus({ frequency: 1.5, delayTime: 3.5, depth: 0.4, wet: liveSynthFx.chorusWet }).start()
+        const pingPong = new Tone.PingPongDelay({
+            delayTime: liveSynthFx.pingPongTime,
+            feedback: liveSynthFx.pingPongFeedback,
+            wet: liveSynthFx.pingPongWet
+        })
+        const reverb = new Tone.Reverb({ decay: 5, wet: liveSynthFx.reverbWet })
+        const volume = new Tone.Volume(liveSynthVolume)
+
+        synth.chain(filter, chorus, pingPong, reverb, volume, Tone.getDestination())
+
+        liveSynthRef.current = synth
+        liveSynthNodesRef.current = { filter, chorus, pingPong, reverb, volume }
+
+        return () => disposeLiveSynth()
+    }, [liveSynthEnabled])
 
     useEffect(() => {
         if (!synthEnabled) {
@@ -259,8 +392,42 @@ export default function BeatMaker() {
         nodes.reverb.wet.rampTo(synthParams.reverbWet, 0.1)
     }, [synthParams])
 
+    useEffect(() => {
+        if (!liveSynthEnabled || !liveSynthRef.current) return
+        liveSynthRef.current.set({ oscillator: { type: liveSynthWaveform } })
+    }, [liveSynthEnabled, liveSynthWaveform])
+
+    useEffect(() => {
+        if (!liveSynthEnabled || !liveSynthRef.current) return
+        liveSynthRef.current.set({ envelope: liveSynthEnvelope })
+    }, [liveSynthEnabled, liveSynthEnvelope])
+
+    useEffect(() => {
+        const nodes = liveSynthNodesRef.current
+        if (!liveSynthEnabled || !nodes) return
+        nodes.volume.volume.rampTo(liveSynthVolume, 0.1)
+    }, [liveSynthEnabled, liveSynthVolume])
+
+    useEffect(() => {
+        const nodes = liveSynthNodesRef.current
+        if (!liveSynthEnabled || !nodes) return
+        nodes.filter.frequency.rampTo(liveSynthFilter.frequency, 0.1)
+        nodes.filter.Q.rampTo(liveSynthFilter.resonance, 0.1)
+    }, [liveSynthEnabled, liveSynthFilter])
+
+    useEffect(() => {
+        const nodes = liveSynthNodesRef.current
+        if (!liveSynthEnabled || !nodes) return
+        nodes.chorus.wet.rampTo(liveSynthFx.chorusWet, 0.1)
+        nodes.pingPong.wet.rampTo(liveSynthFx.pingPongWet, 0.1)
+        nodes.pingPong.delayTime.rampTo(liveSynthFx.pingPongTime, 0.1)
+        nodes.pingPong.feedback.rampTo(liveSynthFx.pingPongFeedback, 0.1)
+        nodes.reverb.wet.rampTo(liveSynthFx.reverbWet, 0.1)
+    }, [liveSynthEnabled, liveSynthFx])
+
     useEffect(() => () => {
         disposeSynth()
+        disposeLiveSynth()
         tracksRef.current.forEach(tr => {
             Object.values(tr.nodes).forEach(node => node.dispose())
         })
@@ -303,7 +470,7 @@ export default function BeatMaker() {
     }
 
     const regenerateSynth = () => {
-        setSynthPattern(generateSynthPattern(stepsCountRef.current, synthScale))
+        setSynthPattern(generateSynthPattern(stepsCountRef.current, synthScale, synthDensityRef.current))
     }
 
     const clearSynthPattern = () => {
@@ -331,7 +498,7 @@ export default function BeatMaker() {
 
     const handleScaleChange = key => {
         setSynthScale(key)
-        setSynthPattern(generateSynthPattern(stepsCountRef.current, key))
+        setSynthPattern(generateSynthPattern(stepsCountRef.current, key, synthDensityRef.current))
     }
 
     const updateSynthParam = (key, value) => {
@@ -339,6 +506,52 @@ export default function BeatMaker() {
     }
 
     const synthHasNotes = synthPattern.some(Boolean)
+
+    const updateLiveSynthEnvelope = (key, value) => {
+        setLiveSynthEnvelope(prev => ({ ...prev, [key]: value }))
+    }
+
+    const updateLiveSynthFilter = (key, value) => {
+        setLiveSynthFilter(prev => ({ ...prev, [key]: value }))
+    }
+
+    const updateLiveSynthFx = (key, value) => {
+        setLiveSynthFx(prev => ({ ...prev, [key]: value }))
+    }
+
+    const handleLiveSynthNoteDown = async note => {
+        if (!liveSynthEnabled || !liveSynthRef.current) return
+        try {
+            await Tone.start()
+        } catch (e) {
+            // ignore start rejections when already running
+        }
+        liveSynthActiveNotesRef.current.add(note)
+        setLiveSynthHeldNotes(prev => (prev.includes(note) ? prev : [...prev, note]))
+        liveSynthRef.current.triggerAttack(note)
+    }
+
+    const handleLiveSynthNoteUp = note => {
+        if (!liveSynthEnabled || !liveSynthRef.current) return
+        if (!liveSynthActiveNotesRef.current.has(note)) return
+        liveSynthActiveNotesRef.current.delete(note)
+        setLiveSynthHeldNotes(prev => prev.filter(n => n !== note))
+        liveSynthRef.current.triggerRelease(note)
+    }
+
+    const handleLiveSynthPointerDown = (note, event) => {
+        event.preventDefault()
+        handleLiveSynthNoteDown(note)
+    }
+
+    const handleLiveSynthPointerUp = (note, event) => {
+        event.preventDefault()
+        handleLiveSynthNoteUp(note)
+    }
+
+    const handleLiveSynthPointerLeave = note => {
+        handleLiveSynthNoteUp(note)
+    }
 
     const anyLoading = tracks.some(t => !t.loaded)
     const playDisabled = anyLoading
@@ -362,6 +575,12 @@ export default function BeatMaker() {
                            onChange={e => setTempo(+e.target.value)}
                            className="w-44 accent-violet-400" />
                     <span>{tempo} BPM</span>
+
+                    <label className="text-sm ml-4">Swing</label>
+                    <input type="range" min={0} max={0.6} step={0.01} value={swing}
+                           onChange={e => setSwing(Number(e.target.value))}
+                           className="w-32 accent-violet-400" />
+                    <span>{Math.round(swing * 100)}%</span>
 
                     <label className="text-sm ml-4">Steps</label>
                     <select value={stepsCount} onChange={e => changeStepsCount(+e.target.value)}
@@ -446,7 +665,7 @@ export default function BeatMaker() {
                             Clear Pattern
                         </button>
                     </div>
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                         <Knob label="Volume (dB)" min={-24} max={6} step={0.5}
                               value={synthParams.volume}
                               onChange={v => updateSynthParam('volume', v)} />
@@ -459,6 +678,95 @@ export default function BeatMaker() {
                         <Knob label="Reverb Wet" min={0} max={1} step={0.01}
                               value={synthParams.reverbWet}
                               onChange={v => updateSynthParam('reverbWet', v)} />
+                        <Knob label="Note Density" min={0.05} max={0.9} step={0.01}
+                              value={synthDensity}
+                              onChange={v => {
+                                  setSynthDensity(v)
+                                  setSynthPattern(generateSynthPattern(stepsCountRef.current, synthScale, v))
+                              }} />
+                    </div>
+                </div>
+
+                <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
+                        <div className="font-semibold text-sky-500">Live Synth Playground</div>
+                        <button onClick={() => setLiveSynthEnabled(v => !v)}
+                                className={`px-3 py-1 rounded-md border transition ${liveSynthEnabled
+                                    ? 'border-sky-500 text-sky-500 hover:bg-sky-500/10'
+                                    : 'border-zinc-400 text-zinc-400 hover:bg-zinc-800/30'}`}>
+                            {liveSynthEnabled ? 'Disable Live Synth' : 'Enable Live Synth'}
+                        </button>
+                        <select value={liveSynthWaveform}
+                                onChange={e => setLiveSynthWaveform(e.target.value)}
+                                className="px-3 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700">
+                            {['sine', 'triangle', 'square', 'sawtooth', 'fatsawtooth', 'pwm'].map(type => (
+                                <option key={type} value={type}>{type}</option>
+                            ))}
+                        </select>
+                        {!liveSynthEnabled && (
+                            <span className="text-xs text-sky-400">Enable the synth and tap the keys to jam live.</span>
+                        )}
+                    </div>
+
+                    <div className={`grid gap-4 transition ${liveSynthEnabled ? 'opacity-100' : 'opacity-60'}`}>
+                        <div className="flex flex-wrap gap-2">
+                            {LIVE_SYNTH_NOTES.map(note => {
+                                const label = note.replace(/\d/, '')
+                                const active = liveSynthHeldNotes.includes(note)
+                                return (
+                                    <button
+                                        key={note}
+                                        onPointerDown={event => handleLiveSynthPointerDown(note, event)}
+                                        onPointerUp={event => handleLiveSynthPointerUp(note, event)}
+                                        onPointerLeave={() => handleLiveSynthPointerLeave(note)}
+                                        onPointerCancel={() => handleLiveSynthPointerLeave(note)}
+                                        className={`px-3 py-2 rounded-md border text-sm font-semibold transition ${active
+                                            ? 'bg-sky-500/30 border-sky-400 text-sky-100'
+                                            : 'bg-zinc-800 border-zinc-700 text-zinc-200 hover:bg-zinc-700'}`}>
+                                        {label}
+                                    </button>
+                                )
+                            })}
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+                            <Knob label="Volume (dB)" min={-30} max={6} step={0.5}
+                                  value={liveSynthVolume}
+                                  onChange={setLiveSynthVolume} />
+                            <Knob label="Attack (s)" min={0.005} max={1} step={0.005}
+                                  value={liveSynthEnvelope.attack}
+                                  onChange={v => updateLiveSynthEnvelope('attack', v)} />
+                            <Knob label="Decay (s)" min={0.05} max={2} step={0.01}
+                                  value={liveSynthEnvelope.decay}
+                                  onChange={v => updateLiveSynthEnvelope('decay', v)} />
+                            <Knob label="Sustain" min={0} max={1} step={0.01}
+                                  value={liveSynthEnvelope.sustain}
+                                  onChange={v => updateLiveSynthEnvelope('sustain', v)} />
+                            <Knob label="Release (s)" min={0.05} max={4} step={0.05}
+                                  value={liveSynthEnvelope.release}
+                                  onChange={v => updateLiveSynthEnvelope('release', v)} />
+                            <Knob label="Filter (Hz)" min={200} max={8000} step={50}
+                                  value={liveSynthFilter.frequency}
+                                  onChange={v => updateLiveSynthFilter('frequency', v)} />
+                            <Knob label="Resonance (Q)" min={0.1} max={10} step={0.1}
+                                  value={liveSynthFilter.resonance}
+                                  onChange={v => updateLiveSynthFilter('resonance', v)} />
+                            <Knob label="Chorus Mix" min={0} max={1} step={0.01}
+                                  value={liveSynthFx.chorusWet}
+                                  onChange={v => updateLiveSynthFx('chorusWet', v)} />
+                            <Knob label="PingPong Mix" min={0} max={1} step={0.01}
+                                  value={liveSynthFx.pingPongWet}
+                                  onChange={v => updateLiveSynthFx('pingPongWet', v)} />
+                            <Knob label="PingPong Time (s)" min={0.05} max={0.6} step={0.01}
+                                  value={liveSynthFx.pingPongTime}
+                                  onChange={v => updateLiveSynthFx('pingPongTime', v)} />
+                            <Knob label="PingPong Feedback" min={0} max={0.95} step={0.01}
+                                  value={liveSynthFx.pingPongFeedback}
+                                  onChange={v => updateLiveSynthFx('pingPongFeedback', v)} />
+                            <Knob label="Reverb Mix" min={0} max={1} step={0.01}
+                                  value={liveSynthFx.reverbWet}
+                                  onChange={v => updateLiveSynthFx('reverbWet', v)} />
+                        </div>
                     </div>
                 </div>
 
@@ -504,7 +812,7 @@ export default function BeatMaker() {
                             </table>
                         </div>
 
-                        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-7">
                             <Knob label="Volume (dB)" min={-24} max={6} step={0.5}
                                   value={t.params.volume} onChange={v => setParam(t.id, 'volume', v)} />
                             <Knob label="Pan" min={-1} max={1} step={0.01}
@@ -515,6 +823,18 @@ export default function BeatMaker() {
                                   value={t.params.lpf} onChange={v => setParam(t.id, 'lpf', v)} />
                             <Knob label="Reverb Wet" min={0} max={1} step={0.01}
                                   value={t.params.reverb} onChange={v => setParam(t.id, 'reverb', v)} />
+                            <Knob label="Distortion" min={0} max={1} step={0.01}
+                                  value={t.params.distortion} onChange={v => setParam(t.id, 'distortion', v)} />
+                            <Knob label="Bit Depth" min={1} max={8} step={1}
+                                  value={t.params.bitDepth} onChange={v => setParam(t.id, 'bitDepth', v)} />
+                            <Knob label="Delay Mix" min={0} max={1} step={0.01}
+                                  value={t.params.delayWet} onChange={v => setParam(t.id, 'delayWet', v)} />
+                            <Knob label="Delay Time (s)" min={0.05} max={0.6} step={0.01}
+                                  value={t.params.delayTime} onChange={v => setParam(t.id, 'delayTime', v)} />
+                            <Knob label="Delay Feedback" min={0} max={0.95} step={0.01}
+                                  value={t.params.delayFeedback} onChange={v => setParam(t.id, 'delayFeedback', v)} />
+                            <Knob label="Playback Rate" min={0.5} max={1.5} step={0.01}
+                                  value={t.params.speed} onChange={v => setParam(t.id, 'speed', v)} />
                         </div>
                     </div>
                 ))}
@@ -531,7 +851,9 @@ function Knob({ label, min, max, step, value, onChange }) {
                    onChange={e => onChange(Number(e.target.value))}
                    className="w-full accent-violet-400" />
             <div className="text-xs opacity-70 mt-1">
-                {typeof value === 'number' ? value.toFixed(2) : value}
+                {typeof value === 'number'
+                    ? (Number.isInteger(value) ? value : value.toFixed(2))
+                    : value}
             </div>
         </div>
     )
