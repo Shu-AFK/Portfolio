@@ -95,8 +95,20 @@ export default function BeatMaker() {
     const tracksRef = useRef(tracks)
     useEffect(() => { tracksRef.current = tracks }, [tracks])
 
+    const progressRef = useRef({})
+
+    const syncProgressRef = (reset = false) => {
+        const next = {}
+        tracksRef.current.forEach(tr => {
+            const existing = progressRef.current[tr.id]
+            next[tr.id] = reset ? 0 : (typeof existing === 'number' ? existing % stepsCountRef.current : 0)
+        })
+        progressRef.current = next
+    }
+
     const stepsCountRef = useRef(stepsCount)
     useEffect(() => { stepsCountRef.current = stepsCount }, [stepsCount])
+    useEffect(() => { syncProgressRef() }, [tracks, stepsCount])
 
     useEffect(() => {
         fetch('/api/samples')
@@ -117,6 +129,7 @@ export default function BeatMaker() {
         const pan = new Tone.Panner(params.pan)
         const reverb = new Tone.Reverb({ decay: 2.5, wet: params.reverb })
         player.chain(hpf, lpf, vol, pan, reverb, Tone.getDestination())
+        player.playbackRate = params.speed || 1
         return { player, hpf, lpf, vol, pan, reverb }
     }
 
@@ -188,6 +201,7 @@ export default function BeatMaker() {
             if (key === 'hpf') tr.nodes.hpf.frequency.rampTo(val, 0.1)
             if (key === 'lpf') tr.nodes.lpf.frequency.rampTo(val, 0.1)
             if (key === 'reverb') tr.nodes.reverb.wet.rampTo(val, 0.1)
+            if (key === 'speed') tr.nodes.player.playbackRate = val
             return { ...tr, params: p }
         }))
 
@@ -254,9 +268,17 @@ export default function BeatMaker() {
     const repeat = time => {
         const step = Math.floor(Tone.Transport.ticks / Tone.Transport.PPQ * 4) % stepsCountRef.current
         setCurrentStep(step)
+        const stepDur = Tone.Time('16n').toSeconds()
         tracksRef.current.forEach(tr => {
             if (!tr.loaded) return
-            if (tr.steps[step]) tr.nodes.player.start(time)
+            const speed = tr.params.speed || 1
+            const startIndex = progressRef.current[tr.id] ?? 0
+            const sliceDur = stepDur / speed
+            for (let offset = 0; offset < speed; offset++) {
+                const idx = (startIndex + offset) % stepsCountRef.current
+                if (tr.steps[idx]) tr.nodes.player.start(time + offset * sliceDur)
+            }
+            progressRef.current[tr.id] = (startIndex + speed) % stepsCountRef.current
         })
 
         if (synthEnabledRef.current && synthRef.current) {
@@ -270,10 +292,7 @@ export default function BeatMaker() {
     const togglePlay = async () => {
         if (!isPlaying) {
             await Tone.start()
-            Tone.Transport.stop()
-            Tone.Transport.cancel()
-            setCurrentStep(0)
-            Tone.Transport.position = 0
+            syncProgressRef(true)
             Tone.Transport.scheduleRepeat(repeat, '16n')
             Tone.Transport.start()
         } else {
@@ -288,28 +307,40 @@ export default function BeatMaker() {
         setSynthPattern(generateSynthPattern(stepsCountRef.current, synthScale))
     }
 
-    const clearSynthPattern = () => {
-        setSynthPattern(Array(stepsCountRef.current).fill(null))
-    }
+        const stepDur = Tone.Time('16n').toSeconds()
+        const duration = stepsCount * loopCycles * stepDur
 
-    const cycleSynthNote = idx => {
-        const notes = getScaleNotes(synthScale)
-        setSynthPattern(prev => {
-            const next = [...prev]
-            const current = next[idx]
-            if (!current) {
-                next[idx] = notes[0]
-            } else {
-                const found = notes.indexOf(current)
-                if (found === -1 || found === notes.length - 1) {
-                    next[idx] = null
-                } else {
-                    next[idx] = notes[found + 1]
+        const buffer = await Tone.Offline(async () => {
+            const offTracks = validTracks.map(tr => {
+                const player = new Tone.Player(tr.sampleUrl)
+                const hpf = new Tone.Filter(tr.params.hpf, 'highpass')
+                const lpf = new Tone.Filter(tr.params.lpf, 'lowpass')
+                const vol = new Tone.Volume(tr.params.volume)
+                const pan = new Tone.Panner(tr.params.pan)
+                const rev = new Tone.Reverb({ decay: 2.5, wet: tr.params.reverb })
+                player.chain(hpf, lpf, vol, pan, rev, Tone.getDestination())
+                return { ...tr, player }
+            })
+
+            await Promise.all(offTracks.map(t => t.player.load()))
+
+            for (let cycle = 0; cycle < loopCycles; cycle++) {
+                for (let step = 0; step < stepsCount; step++) {
+                    const tTime = (cycle * stepsCount + step) * stepDur
+                    offTracks.forEach(ot => {
+                        const speed = ot.params.speed || 1
+                        const sliceDur = stepDur / speed
+                        for (let offset = 0; offset < speed; offset++) {
+                            const idx = (ot.cursor + offset) % stepsCount
+                            if (ot.steps[idx]) ot.player.start(tTime + offset * sliceDur)
+                        }
+                        ot.cursor = (ot.cursor + speed) % stepsCount
+                    })
                 }
             }
-            return next
-        })
-    }
+
+            offTracks.forEach(ot => ot.player.dispose())
+        }, duration)
 
     const handleScaleChange = key => {
         setSynthScale(key)
