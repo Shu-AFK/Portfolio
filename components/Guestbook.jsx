@@ -254,7 +254,7 @@ export default function Guestbook() {
                             onChange={handleChange}
                             maxLength={60}
                             className="mt-2 w-full rounded-xl border border-violet-500/30 bg-white/70 dark:bg-zinc-950/70 px-4 py-3 text-base text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition"
-                            placeholder="Ada Lovelace"
+                            placeholder="Your Name"
                         />
                     </div>
 
