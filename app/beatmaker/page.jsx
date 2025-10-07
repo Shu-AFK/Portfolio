@@ -5,7 +5,7 @@ const BeatMaker = dynamic(() => import('../../components/BeatMaker'), { ssr: fal
 export const metadata = {
     title: 'Beatmaker',
     description: 'Layer drum samples and experiment with the built-in synth pattern generator.',
-    alternates: { canonical: '/beatmaker' },
+    alternates: { canonical: 'https://floyd-dev.com/beatmaker' },
     openGraph: {
         type: 'website',
         url: 'https://floyd-dev.com/beatmaker',

@@ -8,7 +8,12 @@ export const dynamic = 'force-dynamic'
 
 export const metadata = {
     title: 'Guestbook Admin',
-    description: 'Moderate guestbook doodles privately.'
+    description: 'Moderate guestbook doodles privately.',
+    robots: {
+        index: false,
+        follow: false,
+    },
+    alternates: { canonical: 'https://floyd-dev.com/guestbook/admin' },
 }
 
 export default async function GuestbookAdminPage() {

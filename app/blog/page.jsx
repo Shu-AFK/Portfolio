@@ -8,7 +8,7 @@ export const metadata = {
     title: 'Blog',
     description:
         'Read articles, notes, and updates, exploring code, tools, and thoughts worth sharing.',
-    alternates: { canonical: '/blog' },
+    alternates: { canonical: 'https://floyd-dev.com/blog' },
     openGraph: {
         type: 'website',
         url: 'https://floyd-dev.com/blog',
