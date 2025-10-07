@@ -8,7 +8,7 @@ export const metadata = {
     title: 'Home',
     description: 'Explore Floyd Göttsch’s work across C++, Go, and creative coding projects.',
     alternates: {
-        canonical: '/',
+        canonical: 'https://floyd-dev.com/',
     },
 }
 

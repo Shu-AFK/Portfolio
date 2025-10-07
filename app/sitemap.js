@@ -19,7 +19,7 @@ const normalizeDate = value => {
  */
 export default function sitemap() {
     const staticPages = [
-        { path: '', file: path.join(process.cwd(), 'app', 'page.jsx') },
+        { path: '/', file: path.join(process.cwd(), 'app', 'page.jsx') },
         { path: '/blog', file: path.join(process.cwd(), 'app', 'blog', 'page.jsx') },
         { path: '/beatmaker', file: path.join(process.cwd(), 'app', 'beatmaker', 'page.jsx') },
         { path: '/guestbook', file: path.join(process.cwd(), 'app', 'guestbook', 'page.jsx') },
