@@ -32,7 +32,8 @@ function generateSitemap() {
     const staticPages = [
         { loc: `${DOMAIN}/`, file: path.join(ROOT, 'app', 'page.jsx') },
         { loc: `${DOMAIN}/blog`, file: path.join(ROOT, 'app', 'blog', 'page.jsx') },
-        { loc: `${DOMAIN}/beatmaker`, file: path.join(ROOT, 'app', 'beatmaker', 'page.jsx') }
+        { loc: `${DOMAIN}/beatmaker`, file: path.join(ROOT, 'app', 'beatmaker', 'page.jsx') },
+        { loc: `${DOMAIN}/guestbook`, file: path.join(ROOT, 'app', 'guestbook', 'page.jsx') }
     ];
 
     for (const { loc, file } of staticPages) {
