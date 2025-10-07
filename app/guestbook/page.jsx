@@ -2,7 +2,7 @@ import Guestbook from '../../components/Guestbook'
 
 export const metadata = {
     title: 'Guestbook',
-    description: "Sign Floyd Göttsch's guestbook with a fun doodle to say hello.",
+    description: "Sign my guestbook with a fun doodle to say hello.",
     alternates: { canonical: 'https://floyd-dev.com/guestbook' },
     openGraph: {
         type: 'website',
