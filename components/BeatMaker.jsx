@@ -139,6 +139,30 @@ export default function BeatMaker() {
         reverbWet: 0.35
     })
 
+    const masterBusRef = useRef(null)
+
+    useEffect(() => {
+        const volume = new Tone.Volume(-8)
+        const compressor = new Tone.Compressor({
+            threshold: -18,
+            ratio: 3,
+            attack: 0.01,
+            release: 0.3
+        })
+        const limiter = new Tone.Limiter(-1)
+        volume.chain(compressor, limiter, Tone.getDestination())
+        masterBusRef.current = { entry: volume, volume, compressor, limiter }
+
+        return () => {
+            masterBusRef.current = null
+            volume.dispose()
+            compressor.dispose()
+            limiter.dispose()
+        }
+    }, [])
+
+    const getMasterDestination = () => masterBusRef.current?.entry ?? Tone.getDestination()
+
     const tracksRef = useRef(tracks)
     useEffect(() => { tracksRef.current = tracks }, [tracks])
 
@@ -176,10 +200,10 @@ export default function BeatMaker() {
         const bitcrusher = new Tone.BitCrusher(params.bitDepth ?? 8)
         const delay = new Tone.FeedbackDelay(params.delayTime ?? 0.25, params.delayFeedback ?? 0.15)
         delay.wet.value = params.delayWet ?? 0
-        const vol = new Tone.Volume(params.volume ?? 0)
+        const vol = new Tone.Volume(params.volume ?? -6)
         const pan = new Tone.Panner(params.pan ?? 0)
         const reverb = new Tone.Reverb({ decay: 2.5, wet: params.reverb ?? 0.2 })
-        player.chain(hpf, lpf, distortion, bitcrusher, delay, vol, pan, reverb, Tone.getDestination())
+        player.chain(hpf, lpf, distortion, bitcrusher, delay, vol, pan, reverb, getMasterDestination())
         player.playbackRate = params.speed || 1
         return { player, hpf, lpf, distortion, bitcrusher, delay, vol, pan, reverb }
     }
@@ -192,7 +216,7 @@ export default function BeatMaker() {
         if (!url) return
         const id = crypto.randomUUID()
         const params = {
-            volume: 0,
+            volume: -6,
             pan: 0,
             hpf: 20,
             lpf: 15000,
@@ -351,7 +375,7 @@ export default function BeatMaker() {
         const reverb = new Tone.Reverb({ decay: 5, wet: liveSynthFx.reverbWet })
         const volume = new Tone.Volume(liveSynthVolume)
 
-        synth.chain(filter, chorus, pingPong, reverb, volume, Tone.getDestination())
+        synth.chain(filter, chorus, pingPong, reverb, volume, getMasterDestination())
 
         liveSynthRef.current = synth
         liveSynthNodesRef.current = { filter, chorus, pingPong, reverb, volume }
@@ -375,7 +399,7 @@ export default function BeatMaker() {
         delay.wet.value = params.delayWet
         const reverb = new Tone.Reverb({ decay: preset.reverb.decay, wet: params.reverbWet })
         const volume = new Tone.Volume(params.volume)
-        synth.chain(filter, delay, reverb, volume, Tone.getDestination())
+        synth.chain(filter, delay, reverb, volume, getMasterDestination())
         synthRef.current = synth
         synthNodesRef.current = { filter, delay, reverb, volume }
         setSynthParams(params)
